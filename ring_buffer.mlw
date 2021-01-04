@@ -46,27 +46,40 @@ module RingBuffer
   =
     q.len
 
-  val clear (q: queue 'a) : unit
+  let clear (q: queue 'a) : unit
     writes  { q.len, q.sequence }
     ensures { q.sequence = Seq.empty }
-  (* = ... *)
+  =
+    q.len <- 0;
+    ghost (q.sequence <- Seq.empty)
 
-  val push (q: queue 'a) (x: 'a) : unit
+  let push (q: queue 'a) (x: 'a) : unit
     requires { Seq.length q.sequence < q.capacity }
     writes   { q.data.elts, q.len, q.sequence }
     ensures  { q.sequence = Seq.snoc (old q.sequence) x }
-  (* = ... *)
+  =
+    (* TODO: use a mod operator here *)
+    q.data[if q.first + q.len < length q.data then q.first + q.len else (q.first + q.len - length q.data)] <- x;
+    q.len <- q.len + 1;
+    ghost (q.sequence <- Seq.snoc q.sequence x)
 
-  val head (q: queue 'a) : 'a
+  let head (q: queue 'a) : 'a
     requires { Seq.length q.sequence > 0 }
     ensures  { result = Seq.get q.sequence 0 }
-  (* = ... *)
+  =
+    q.data[q.first]
 
-  val pop (q: queue 'a) : 'a
+  let pop (q: queue 'a) : 'a
     requires { Seq.length q.sequence > 0 }
     writes   { q.first, q.len, q.sequence }
     ensures  { result = Seq.get (old q.sequence) 0 }
     ensures  { q.sequence = (old q.sequence)[1 ..] }
-  (* = ... *)
+  =
+    let res = q.data[q.first] in
+    (* TODO: use a mod operator here *)
+    q.first <- if q.first + 1 < length q.data then q.first + 1 else 0;
+    q.len <- q.len - 1;
+    ghost (q.sequence <- q.sequence[1 ..]);
+    res
 
 end
